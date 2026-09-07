@@ -1,0 +1,53 @@
+name: exo2-ci
+
+# Tests + builds de l'exo2 à chaque push/PR. Exo1 non concerné (paths filter).
+on:
+  push:
+    paths:
+      - 'exo2-portail-depot/**'
+      - '.github/workflows/exo2-ci.yml'
+  pull_request:
+    paths:
+      - 'exo2-portail-depot/**'
+      - '.github/workflows/exo2-ci.yml'
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: exo2-portail-depot/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: exo2-portail-depot/backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:seed
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: exo2-portail-depot/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: exo2-portail-depot/frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f exo2-portail-depot/infra/docker-compose.yml config > /dev/null

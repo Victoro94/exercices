@@ -16,7 +16,7 @@ export class PublicDepositController {
 
   @Post('unlock')
   @HttpCode(200)
-  @Throttle({ unlock: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   unlock(
     @Param('token') token: string,
     @Body() dto: UnlockDto,

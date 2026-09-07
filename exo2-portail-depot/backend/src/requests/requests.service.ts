@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
@@ -68,7 +68,7 @@ export class RequestsService {
         documents: { where: { status: 'READY' }, orderBy: { createdAt: 'desc' } },
       },
     });
-    if (!r) return null;
+    if (!r) throw new NotFoundException('Demande inconnue');
     const status = computeStatus(r.expiresAt, r._count.documents, r.expectedDocs);
     return this.toPublic(r, r._count.documents, status);
   }

@@ -33,4 +33,10 @@ Socle de projet pour l'exercice DIV Protocol.
 - `COMPLETE` : nombre de pièces attendu atteint.
 - `EXPIRED` : date d'expiration dépassée.
 
+## CI/CD
+
+- `.github/workflows/exo2-ci.yml` : à chaque push/PR, tests Jest backend (51 tests), tests Vitest frontend (13 tests), builds, validation du compose.
+- `.github/workflows/exo2-docker.yml` : sur `main`, build + push des images `ghcr.io/victoro94/portail-depot-backend` et `...-frontend` (`latest` + `sha-...`). Zéro secret requis (auth via `GITHUB_TOKEN`).
+- Déploiement serveur : `docker pull` des images + compose local (config seule, aucun code source sur la machine).
+
 Les implémentations, tests, conteneurs et procédures d'installation seront ajoutés dans les étapes suivantes.

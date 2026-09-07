@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { RequestsModule } from './requests/requests.module';
@@ -15,8 +16,9 @@ import { HealthController } from './health.controller';
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
+      // Limiteur global : 60 req/min par route. Le 5/min strict du PIN
+      // est un override local sur la route unlock (voir controller).
       { name: 'default', ttl: 60_000, limit: 60 },
-      { name: 'unlock', ttl: 60_000, limit: 5 },
     ]),
     PrismaModule,
     AuthModule,
@@ -26,5 +28,6 @@ import { HealthController } from './health.controller';
     MetricsModule,
   ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

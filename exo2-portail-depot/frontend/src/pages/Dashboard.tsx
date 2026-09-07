@@ -117,9 +117,13 @@ export function Dashboard() {
           <Reveal key={r.id} delay={Math.min(i * 60, 300)}>
             <RequestCard
               req={r}
-              onCopy={() => {
+              onCopy={async () => {
                 const url = `${window.location.origin}/d/${r.token}`;
-                navigator.clipboard?.writeText(url).catch(() => undefined);
+                try {
+                  await navigator.clipboard.writeText(url);
+                } catch {
+                  /* presse-papiers indisponible (http, iframe) : on affiche quand même le lien */
+                }
                 setNotice(`Lien copié : ${url}`);
               }}
               onDelete={async () => {

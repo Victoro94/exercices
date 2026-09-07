@@ -28,7 +28,7 @@ Lockout PIN : 5 échecs -> 15min.
 npm install
 cp .env.example .env   # obligatoire, sinon DATABASE_URL manquante (P1012)
 npx prisma generate
-npm test
+npm test               # Jest : 51 tests — logique (statut/expiration/PIN), services mockés, HTTP par code (200/201/400/401/403/404/429)
 npm run build
 npm run start:dev      # nécessite Postgres + MinIO joignables (voir .env)
 ```
