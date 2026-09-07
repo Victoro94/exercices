@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RequestStatus {
+  PENDING
+  COMPLETE
+  EXPIRED
+}
+
+enum DocumentStatus {
+  PENDING
+  READY
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  requests     DepositRequest[]
+}
+
+model DepositRequest {
+  id             String        @id @default(cuid())
+  title          String
+  token          String        @unique
+  pinHash        String
+  expectedDocs   Int           @default(4)
+  status         RequestStatus @default(PENDING)
+  expiresAt      DateTime
+  failedAttempts Int           @default(0)
+  lockedUntil    DateTime?
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents      Document[]
+  auditLogs      AuditLog[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Document {
+  id        String         @id @default(cuid())
+  requestId String
+  request   DepositRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  filename  String
+  mime      String
+  size      Int
+  s3Key     String         @unique
+  status    DocumentStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+
+  @@index([requestId])
+}
+
+model AuditLog {
+  id        String         @id @default(cuid())
+  requestId String
+  request   DepositRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  ipHash    String?
+  action    String
+  createdAt DateTime       @default(now())
+
+  @@index([requestId])
+}
