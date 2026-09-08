@@ -24,6 +24,39 @@ body {
   box-shadow: inset 0 0 0 1px #5100FF;
 }
 .div-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Déclinaisons compactes (gabarit "Copier le lien") : même langage, inversion au hover. */
+.div-btn-small-primary {
+  background: #5100FF;
+  color: #fff;
+  font-weight: 600;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 999px;
+  border: 1px solid #5100FF;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.div-btn-small-primary:hover:not(:disabled) {
+  background: #F7F6FF;
+  color: #5100FF;
+  box-shadow: inset 0 0 0 1px #5100FF;
+}
+.div-btn-small-danger {
+  background: #FF4C4C;
+  color: #fff;
+  font-weight: 600;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 999px;
+  border: 1px solid #FF4C4C;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.div-btn-small-danger:hover:not(:disabled) {
+  background: #FFD0D0;
+  color: #FF4C4C;
+  box-shadow: inset 0 0 0 1px #FF4C4C;
+}
 .div-card {
   background: #fff;
   border: 1px solid #E9E9E9;
@@ -76,4 +109,42 @@ body {
 .pin-box:focus {
   outline: 2px solid #5100FF;
   border-color: #5100FF;
+}
+
+/* En-tête dashboard : tient sur 375px grâce au wrap. */
+.dash-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+
+/* Colonne d'actions d'une carte : pastille + 3 boutons répartis sur la hauteur. */
+.req-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .dash-head {
+    margin: 16px 0;
+  }
+  .dash-head h1 {
+    font-size: 19px;
+    width: 100%;
+  }
+  .div-btn-primary {
+    padding: 12px 18px;
+  }
+  .req-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+  }
 }

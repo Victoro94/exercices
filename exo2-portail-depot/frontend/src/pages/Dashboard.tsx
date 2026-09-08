@@ -14,6 +14,8 @@ export function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('Dossier Martin, pièces 2026');
   const [pin, setPin] = useState('4816');
+  const [expectedDocs, setExpectedDocs] = useState('4');
+  const [expiresInDays, setExpiresInDays] = useState('7');
   const [showForm, setShowForm] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -47,7 +49,9 @@ export function Dashboard() {
     e.preventDefault();
     setCreating(true);
     try {
-      const r = await api.createRequest({ title, pin, expectedDocs: 4, expiresInDays: 7 });
+      const n = Math.min(50, Math.max(1, parseInt(expectedDocs, 10) || 4));
+      const days = Math.min(30, Math.max(1, parseInt(expiresInDays, 10) || 7));
+      const r = await api.createRequest({ title, pin, expectedDocs: n, expiresInDays: days });
       setItems((p) => [r, ...p]);
       setShowForm(false);
       setNotice(`Lien généré : ${window.location.origin}/d/${r.token} — PIN ${pin}`);
@@ -60,9 +64,16 @@ export function Dashboard() {
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '24px 0' }}>
+      <div className="dash-head">
         <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Demandes de dépôt</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={load}
+            disabled={loading}
+            style={{ border: `1px solid ${DIV.border}`, background: '#fff', borderRadius: 999, padding: '14px 20px', cursor: 'pointer' }}
+          >
+            Actualiser
+          </button>
           <button className="div-btn-primary" onClick={() => setShowForm((s) => !s)}>
             Créer une demande
           </button>
@@ -95,6 +106,32 @@ export function Dashboard() {
             <input className="div-input mono" style={{ marginTop: 6 }} value={pin} onChange={(e) => setPin(e.target.value)} maxLength={4} />
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+              Pièces attendues (1-50)
+              <input
+                className="div-input"
+                style={{ marginTop: 6 }}
+                type="number"
+                min={1}
+                max={50}
+                value={expectedDocs}
+                onChange={(e) => setExpectedDocs(e.target.value)}
+              />
+            </label>
+            <label style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+              Expire dans (jours, 1-30)
+              <input
+                className="div-input"
+                style={{ marginTop: 6 }}
+                type="number"
+                min={1}
+                max={30}
+                value={expiresInDays}
+                onChange={(e) => setExpiresInDays(e.target.value)}
+              />
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
             <button className="div-btn-primary" disabled={creating} type="submit">
               {creating ? 'Création…' : 'Créer'}
             </button>
@@ -125,6 +162,11 @@ export function Dashboard() {
                   /* presse-papiers indisponible (http, iframe) : on affiche quand même le lien */
                 }
                 setNotice(`Lien copié : ${url}`);
+              }}
+              onSave={async (dto) => {
+                const updated = await api.updateRequest(r.id, dto);
+                setItems((p) => p.map((x) => (x.id === r.id ? updated : x)));
+                setNotice(`Demande mise à jour : « ${updated.title} ».`);
               }}
               onDelete={async () => {
                 if (!confirm(`Supprimer « ${r.title} » ?`)) return;

@@ -1,0 +1,79 @@
+{
+  "title": "Portail de dépôt",
+  "uid": "portail-depot",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": ["portail-depot"],
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Backend UP",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "up{job=\"backend\"}", "refId": "A" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Demandes créées (total)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "deposit_requests_created_total", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Échecs PIN (5min)",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "increase(pin_unlock_fail_total[5m])", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Lockouts PIN (total)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "pin_lockout_total", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Requêtes/s par route",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (route) (rate(http_requests_total[5m]))", "refId": "A" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Échecs d'upload par motif",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (reason) (increase(upload_fail_total[10m]))", "refId": "A" }]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Latence HTTP p95 (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "alertlist",
+      "title": "Alertes (Alertmanager)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "alertmanager", "uid": "alertmanager" },
+      "options": { "showOptions": "all", "maxItems": 20, "sortOrder": 1 }
+    }
+  ]
+}

@@ -69,6 +69,20 @@ export const api = {
   createRequest: (dto: { title: string; pin: string; expectedDocs?: number; expiresInDays?: number }) =>
     req<DepositRequest>('/requests', { method: 'POST', body: JSON.stringify(dto) }, 'lawyer'),
   deleteRequest: (id: string) => req<{ deleted: boolean }>(`/requests/${id}`, { method: 'DELETE' }, 'lawyer'),
+  updateRequest: (id: string, dto: { title?: string; expectedDocs?: number; expiresAt?: string }) =>
+    req<DepositRequest>(`/requests/${id}`, { method: 'PATCH', body: JSON.stringify(dto) }, 'lawyer'),
+  getRequestFiles: (id: string) =>
+    req<Array<{ id: string; filename: string; mime: string; size: number; createdAt: string }>>(
+      `/requests/${id}/files`,
+      {},
+      'lawyer',
+    ),
+  downloadRequestFile: (id: string, fileId: string) =>
+    req<{ downloadUrl: string; filename: string; mime: string; expiresIn: number }>(
+      `/requests/${id}/files/${fileId}/download`,
+      {},
+      'lawyer',
+    ),
   publicMeta: (token: string) => req<PublicMeta>(`/public/${token}`),
   unlock: (token: string, pin: string) =>
     req<PublicMeta & { session: string }>(`/public/${token}/unlock`, {
@@ -86,6 +100,27 @@ export const api = {
     req<{ readyCount: number; expectedDocs: number; status: string }>(
       `/public/${token}/files/${documentId}/complete`,
       { method: 'POST', body: JSON.stringify({}) },
+      'public',
+      token,
+    ),
+  listFiles: (token: string) =>
+    req<Array<{ id: string; filename: string; mime: string; size: number; createdAt: string }>>(
+      `/public/${token}/files`,
+      {},
+      'public',
+      token,
+    ),
+  deleteFile: (token: string, documentId: string) =>
+    req<{ readyCount: number; expectedDocs: number; status: string }>(
+      `/public/${token}/files/${documentId}`,
+      { method: 'DELETE' },
+      'public',
+      token,
+    ),
+  downloadFile: (token: string, documentId: string) =>
+    req<{ downloadUrl: string; filename: string; mime: string; expiresIn: number }>(
+      `/public/${token}/files/${documentId}/download`,
+      {},
       'public',
       token,
     ),

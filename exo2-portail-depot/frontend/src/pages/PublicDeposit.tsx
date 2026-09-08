@@ -21,11 +21,42 @@ export function PublicDeposit() {
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
-    api
-      .publicMeta(token)
-      .then(setMeta)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Lien invalide'))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    async function load() {
+      try {
+        const m = await api.publicMeta(token);
+        if (cancelled) return;
+        setMeta(m);
+        // Session encore valide (même navigateur) ? On restaure sans re-saisir le PIN
+        // et on affiche les fichiers déjà déposés.
+        if (sessionStorage.getItem(`div_public_${token}`)) {
+          try {
+            const existing = await api.listFiles(token);
+            if (cancelled) return;
+            setFiles(
+              existing.map((d) => ({
+                id: d.id,
+                name: d.filename,
+                size: d.size,
+                progress: 100,
+                done: true,
+              })),
+            );
+            setUnlocked(true);
+          } catch {
+            sessionStorage.removeItem(`div_public_${token}`);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Lien invalide');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   function setDigit(i: number, v: string) {
@@ -44,9 +75,46 @@ export function PublicDeposit() {
       const r = await api.unlock(token, pin.join(''));
       sessionStorage.setItem(`div_public_${token}`, r.session);
       setMeta(r);
+      const existing = await api.listFiles(token);
+      setFiles(
+        existing.map((d) => ({
+          id: d.id,
+          name: d.filename,
+          size: d.size,
+          progress: 100,
+          done: true,
+        })),
+      );
       setUnlocked(true);
     } catch (e) {
       setUnlockError(e instanceof Error ? e.message : 'PIN incorrect');
+    }
+  }
+
+  async function removeFile(id: string | undefined) {
+    if (!id) return;
+    if (!confirm('Supprimer ce fichier du dépôt ?')) return;
+    setFiles((p) => p.map((x) => (x.id === id ? { ...x, deleting: true } : x)));
+    try {
+      const r = await api.deleteFile(token, id);
+      setFiles((p) => p.filter((x) => x.id !== id));
+      setMeta((m) =>
+        m ? { ...m, readyCount: r.readyCount, status: r.status as PublicMeta['status'] } : m,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Suppression impossible';
+      setFiles((p) => p.map((x) => (x.id === id ? { ...x, deleting: false, error: msg } : x)));
+    }
+  }
+
+  async function downloadFile(id: string | undefined) {
+    if (!id) return;
+    try {
+      const r = await api.downloadFile(token, id);
+      window.open(r.downloadUrl, '_blank', 'noopener');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Téléchargement impossible';
+      setFiles((p) => p.map((x) => (x.id === id ? { ...x, error: msg } : x)));
     }
   }
 
@@ -69,7 +137,7 @@ export function PublicDeposit() {
         });
         const done = await api.complete(token, pre.documentId);
         setMeta((m) => (m ? { ...m, readyCount: done.readyCount, status: done.status as PublicMeta['status'] } : m));
-        setFiles((p) => p.map((x) => (x.name === f.name && !x.done ? { ...x, progress: 100, done: true } : x)));
+        setFiles((p) => p.map((x) => (x.name === f.name && !x.done ? { ...x, progress: 100, done: true, id: pre.documentId } : x)));
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Échec envoi';
         setFiles((p) => p.map((x) => (x.name === f.name && !x.done ? { ...x, error: msg } : x)));
@@ -91,7 +159,7 @@ export function PublicDeposit() {
     <div style={{ maxWidth: 640, margin: '0 auto', padding: 16 }}>
       <Reveal>
         <div className="div-card" style={{ padding: 24, marginTop: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{meta.title}</h1>
             <StatusBadge status={meta.status} />
           </div>
@@ -110,6 +178,7 @@ export function PublicDeposit() {
                     ref={(el) => {
                       inputsRef.current[i] = el;
                     }}
+                    aria-label={`PIN chiffre ${i + 1}`}
                     className="pin-box mono"
                     inputMode="numeric"
                     value={d}
@@ -133,7 +202,12 @@ export function PublicDeposit() {
             <div style={{ marginTop: 20, display: 'grid', gap: 12 }}>
               <Dropzone onFiles={handleFiles} disabled={meta.status === 'EXPIRED'} />
               {files.map((f, i) => (
-                <FileRow key={`${f.name}-${i}`} file={f} />
+                <FileRow
+                  key={f.id ?? `${f.name}-${i}`}
+                  file={f}
+                  onDelete={f.done && f.id ? () => removeFile(f.id) : undefined}
+                  onDownload={f.done && f.id ? () => downloadFile(f.id) : undefined}
+                />
               ))}
             </div>
           )}

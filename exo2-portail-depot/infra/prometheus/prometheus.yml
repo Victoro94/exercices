@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alert.rules.yml
+
+# L'alerting part vers Alertmanager (UI :9093), qui relaie vers le sink local.
+# En prod : remplacez l'URL du webhook par Slack/PagerDuty.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: backend
+    static_configs:
+      - targets: ['backend:3000']
+    metrics_path: /api/metrics

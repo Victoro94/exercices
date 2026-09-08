@@ -1,0 +1,49 @@
+groups:
+  - name: portail-depot
+    interval: 15s
+    rules:
+      # Le backend ne répond plus : parcours avocat + client cassés.
+      # Déclenchement : stoppez le conteneur backend, l'alerte passe FIRING en ~1min.
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Backend injoignable (job {{ $labels.job }})'
+          description: 'Prometheus ne scrape plus le backend depuis plus d’1 minute.'
+
+      # Bourrage du PIN : attaque par force brute ou client qui tourne en rond.
+      # Déclenchement : >10 PIN faux en 5min sur /public/:token/unlock.
+      - alert: PinBruteForce
+        expr: increase(pin_unlock_fail_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Vague d’échecs PIN ({{ $value }} en 5min)'
+          description: 'Saisir 11+ PIN erronés en 5 minutes. Vérifier le lockout 5/15min et l’audit.'
+
+      # Les dépôts échouent : MinIO, CORS ou fichiers hors gabarit.
+      # Déclenchement : >5 échecs d’upload en 10min.
+      - alert: UploadFailuresHigh
+        expr: increase(upload_fail_total[10m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Échecs d’upload élevés ({{ $value }} en 10min, {{ $labels.reason }})'
+          description: 'Vérifier MinIO, la config CORS et les logs backend.'
+
+      # Taux d’erreurs 5xx anormal sur l’API.
+      - alert: HttpErrorsHigh
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Taux 5xx > 5% sur 5min'
+          description: 'Régression backend probable, vérifier les logs et envisager un rollback.'

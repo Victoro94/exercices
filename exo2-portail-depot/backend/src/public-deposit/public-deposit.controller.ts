@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PublicDepositService } from './public-deposit.service';
 import { UnlockDto } from './dto/unlock.dto';
@@ -41,6 +41,28 @@ export class PublicDepositController {
     @Req() req: { ip?: string },
   ) {
     return this.service.complete(token, id, req.ip);
+  }
+
+  @Get('files')
+  @UseGuards(PublicSessionGuard)
+  listFiles(@Param('token') token: string) {
+    return this.service.listFiles(token);
+  }
+
+  @Delete('files/:id')
+  @UseGuards(PublicSessionGuard)
+  removeFile(
+    @Param('token') token: string,
+    @Param('id') id: string,
+    @Req() req: { ip?: string },
+  ) {
+    return this.service.removeFile(token, id, req.ip);
+  }
+
+  @Get('files/:id/download')
+  @UseGuards(PublicSessionGuard)
+  downloadFile(@Param('token') token: string, @Param('id') id: string) {
+    return this.service.downloadFile(token, id);
   }
 
   @Post('files')

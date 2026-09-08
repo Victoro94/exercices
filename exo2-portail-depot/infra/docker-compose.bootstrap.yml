@@ -1,0 +1,10 @@
+# Override temporaire pour l'obtention du certificat (certbot-init.sh) :
+# frontend en HTTP seul avec la conf bootstrap (challenges ACME).
+# Usage : docker compose -f docker-compose.prod.yml -f docker-compose.bootstrap.yml up -d frontend
+services:
+  frontend:
+    ports:
+      - '127.0.0.1:${HTTP_PORT:?HTTP_PORT manquant}:80'
+    volumes:
+      - ./nginx.bootstrap.conf:/etc/nginx/conf.d/default.conf:ro
+      - web:/var/www/certbot:ro

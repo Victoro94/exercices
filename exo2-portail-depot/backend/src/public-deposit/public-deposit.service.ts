@@ -153,4 +153,49 @@ export class PublicDepositService {
     this.metrics.requestsByStatus.set({ status }, 1);
     return { readyCount: count, expectedDocs: r.expectedDocs, status };
   }
+
+  async listFiles(token: string) {
+    const r = await this.findByToken(token);
+    const docs = await this.prisma.document.findMany({
+      where: { requestId: r.id, status: 'READY' },
+      orderBy: { createdAt: 'desc' },
+    });
+    return docs.map((d: { id: string; filename: string; mime: string; size: number; createdAt: Date }) => ({
+      id: d.id,
+      filename: d.filename,
+      mime: d.mime,
+      size: d.size,
+      createdAt: d.createdAt,
+    }));
+  }
+
+  async removeFile(token: string, documentId: string, ip?: string) {
+    const r = await this.findByToken(token);
+    if (isExpired(r.expiresAt)) throw new ForbiddenException('Lien expiré');
+    const doc = await this.prisma.document.findFirst({ where: { id: documentId, requestId: r.id } });
+    if (!doc) throw new NotFoundException('Document inconnu');
+
+    await this.storage.remove(doc.s3Key);
+    await this.prisma.document.delete({ where: { id: doc.id } });
+    await this.prisma.auditLog.create({
+      data: { requestId: r.id, ipHash: hashIp(ip), action: 'DELETE_OK' },
+    });
+
+    const count = await this.prisma.document.count({ where: { requestId: r.id, status: 'READY' } });
+    const status = computeStatus(r.expiresAt, count, r.expectedDocs);
+    await this.prisma.depositRequest.update({ where: { id: r.id }, data: { status } });
+    this.metrics.requestsByStatus.set({ status }, 1);
+    return { readyCount: count, expectedDocs: r.expectedDocs, status };
+  }
+
+  async downloadFile(token: string, documentId: string) {
+    const r = await this.findByToken(token);
+    if (isExpired(r.expiresAt)) throw new ForbiddenException('Lien expiré');
+    const doc = await this.prisma.document.findFirst({
+      where: { id: documentId, requestId: r.id, status: 'READY' },
+    });
+    if (!doc) throw new NotFoundException('Document inconnu');
+    const downloadUrl = await this.storage.presignGet(doc.s3Key, doc.filename);
+    return { downloadUrl, filename: doc.filename, mime: doc.mime, expiresIn: 300 };
+  }
 }

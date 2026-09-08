@@ -33,6 +33,26 @@ Socle de projet pour l'exercice DIV Protocol.
 - `COMPLETE` : nombre de pièces attendu atteint.
 - `EXPIRED` : date d'expiration dépassée.
 
+## Installation one-click
+
+```bash
+./install.sh
+```
+
+Crée `.env` (secrets générés), build + démarre toute la stack, applique migrations
+et seed, vérifie le login démo, puis affiche les URLs : front `:8080`, Grafana
+`:3001`, Prometheus `:9090`, Alertmanager `:9093`, MinIO `:9001`.
+
+Compte démo : `avocat@example.test` / `ChangeMe123!`, demande seedée PIN `1234`.
+
+## Observabilité
+
+4 alertes Prometheus (`infra/prometheus/alert.rules.yml`), choisies parce que
+chacune déclenche une action : `BackendDown` (rollback/restart), `PinBruteForce`
+(lockout + audit), `UploadFailuresHigh` (MinIO/CORS), `HttpErrorsHigh` (rollback).
+Dashboard Grafana provisionné + Alertmanager qui relaie vers un sink local en dev
+(à remplacer par Slack/PagerDuty en prod).
+
 ## CI/CD
 
 - `.github/workflows/exo2-ci.yml` : à chaque push/PR, tests Jest backend (51 tests), tests Vitest frontend (13 tests), builds, validation du compose.

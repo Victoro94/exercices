@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
@@ -37,7 +38,7 @@ describe('PublicDepositService', () => {
   beforeEach(() => {
     prisma = {
       depositRequest: { findUnique: jest.fn(), update: jest.fn() },
-      document: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn(), count: jest.fn() },
+      document: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn() },
       auditLog: { create: jest.fn() },
     };
     jwt = { signAsync: jest.fn().mockResolvedValue('public-session') };
@@ -45,7 +46,9 @@ describe('PublicDepositService', () => {
     storage = {
       ensureBucket: jest.fn(),
       presignPut: jest.fn().mockResolvedValue('https://minio/put-url'),
+      presignGet: jest.fn().mockResolvedValue('https://minio/get-url'),
       exists: jest.fn(),
+      remove: jest.fn(),
       s3KeyFor: jest.fn((t: string, id: string, f: string) => `${t}/${id}-${f}`),
     };
     metrics = {
@@ -159,5 +162,64 @@ describe('PublicDepositService', () => {
       where: { id: 'd1' },
       data: { status: 'READY' },
     });
+  });
+
+  it('listFiles retourne les documents READY sans secret', async () => {
+    prisma.depositRequest.findUnique.mockResolvedValue(reqFixture({ pinHash }));
+    prisma.document.findMany.mockResolvedValue([
+      { id: 'd1', filename: 'a.pdf', mime: 'application/pdf', size: 10, s3Key: 'k1', createdAt: new Date() },
+    ]);
+    const rows = await svc.listFiles('tok123');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).not.toHaveProperty('s3Key');
+    expect(rows[0]).toMatchObject({ id: 'd1', filename: 'a.pdf' });
+  });
+
+  it('removeFile supprime S3 + ligne DB, recalcule et audite', async () => {
+    prisma.depositRequest.findUnique.mockResolvedValue(
+      reqFixture({ pinHash, expectedDocs: 1, _count: { documents: 1 } }),
+    );
+    prisma.document.findFirst.mockResolvedValue({ id: 'd1', s3Key: 'k1' });
+    prisma.document.count.mockResolvedValue(0);
+    const r = await svc.removeFile('tok123', 'd1');
+    expect(storage.remove).toHaveBeenCalledWith('k1');
+    expect(prisma.document.delete).toHaveBeenCalledWith({ where: { id: 'd1' } });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: 'DELETE_OK' }) }),
+    );
+    expect(r).toMatchObject({ readyCount: 0, status: 'PENDING' });
+  });
+
+  it('removeFile refuse sur lien expiré et document inconnu', async () => {
+    prisma.depositRequest.findUnique.mockResolvedValue(
+      reqFixture({ pinHash, expiresAt: new Date(Date.now() - 1000) }),
+    );
+    await expect(svc.removeFile('tok123', 'd1')).rejects.toBeInstanceOf(ForbiddenException);
+
+    prisma.depositRequest.findUnique.mockResolvedValue(reqFixture({ pinHash }));
+    prisma.document.findFirst.mockResolvedValue(null);
+    await expect(svc.removeFile('tok123', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.document.delete).not.toHaveBeenCalled();
+  });
+
+  it('downloadFile retourne une URL presignée, 404 si inconnu, 403 si expiré', async () => {
+    prisma.depositRequest.findUnique.mockResolvedValue(reqFixture({ pinHash }));
+    prisma.document.findFirst.mockResolvedValue({
+      id: 'd1',
+      filename: 'a.pdf',
+      mime: 'application/pdf',
+      s3Key: 'k1',
+    });
+    const r = await svc.downloadFile('tok123', 'd1');
+    expect(r).toMatchObject({ downloadUrl: 'https://minio/get-url', filename: 'a.pdf' });
+    expect(storage.presignGet).toHaveBeenCalledWith('k1', 'a.pdf');
+
+    prisma.document.findFirst.mockResolvedValue(null);
+    await expect(svc.downloadFile('tok123', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+
+    prisma.depositRequest.findUnique.mockResolvedValue(
+      reqFixture({ pinHash, expiresAt: new Date(Date.now() - 1000) }),
+    );
+    await expect(svc.downloadFile('tok123', 'd1')).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
