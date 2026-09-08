@@ -2,10 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PublicDeposit } from './PublicDeposit';
+import { PublicDeposit } from '../../src/pages/PublicDeposit';
 
-vi.mock('../api/client', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../api/client')>();
+vi.mock('../../src/api/client', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/api/client')>();
   return {
     ...mod,
     api: {
@@ -29,7 +29,7 @@ const META = {
 };
 
 async function mockedApi() {
-  return (await import('../api/client')).api as unknown as Record<string, ReturnType<typeof vi.fn>>;
+  return (await import('../../src/api/client')).api as unknown as Record<string, ReturnType<typeof vi.fn>>;
 }
 
 function renderPage() {

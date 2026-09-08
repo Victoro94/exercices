@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { AuthService } from './auth.service';
+import { AuthService } from '../../src/auth/auth.service';
 
 describe('AuthService', () => {
   let prisma: { user: { findUnique: jest.Mock } };

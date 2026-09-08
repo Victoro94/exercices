@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { PublicSessionGuard } from './public-session.guard';
+import { PublicSessionGuard } from '../../src/public-deposit/public-session.guard';
 
 function ctxWith(req: Record<string, unknown>) {
   return {

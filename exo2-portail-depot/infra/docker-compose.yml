@@ -40,6 +40,8 @@ services:
       retries: 10
 
   backend:
+    # image: nom GHCR (pull sans build via install-registry.sh), build: pour install.sh.
+    image: ghcr.io/victoro94/portail-depot-backend:${IMAGE_TAG:-latest}
     build: ../backend
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-deposit_portal}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-deposit_portal}?schema=public
@@ -65,6 +67,7 @@ services:
     command: ['sh', '-c', 'npx prisma migrate deploy && npm run prisma:seed:prod && node dist/main']
 
   frontend:
+    image: ghcr.io/victoro94/portail-depot-frontend:${IMAGE_TAG:-latest}
     build: ../frontend
     ports:
       - '8080:80'

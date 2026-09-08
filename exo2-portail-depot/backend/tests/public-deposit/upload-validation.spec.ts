@@ -1,4 +1,4 @@
-import { ALLOWED_MIMES, MAX_FILE_BYTES } from '../storage/storage.service';
+import { ALLOWED_MIMES, MAX_FILE_BYTES } from '../../src/storage/storage.service';
 
 function validateUpload(mime: string, size: number): boolean {
   return ALLOWED_MIMES.includes(mime) && size > 0 && size <= MAX_FILE_BYTES;

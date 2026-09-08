@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs';
-import { RequestsService } from './requests.service';
+import { RequestsService } from '../../src/requests/requests.service';
 
 describe('RequestsService', () => {
   const metrics = { incRequestCreated: jest.fn() };

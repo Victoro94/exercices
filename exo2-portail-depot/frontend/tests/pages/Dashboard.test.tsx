@@ -2,10 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { Dashboard } from './Dashboard';
+import { Dashboard } from '../../src/pages/Dashboard';
 
-vi.mock('../api/client', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../api/client')>();
+vi.mock('../../src/api/client', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/api/client')>();
   return {
     ...mod,
     getLawyerToken: () => 'jwt-123',
@@ -31,7 +31,7 @@ const REQ = {
 };
 
 async function mockedApi() {
-  return (await import('../api/client')).api as unknown as Record<string, ReturnType<typeof vi.fn>>;
+  return (await import('../../src/api/client')).api as unknown as Record<string, ReturnType<typeof vi.fn>>;
 }
 
 function renderDashboard() {
@@ -58,12 +58,33 @@ describe('Dashboard', () => {
     renderDashboard();
     const openers = screen.getAllByRole('button', { name: 'Créer une demande' });
     await user.click(openers[0]);
+    fireEvent.change(screen.getByPlaceholderText(/dossier martin/i), {
+      target: { value: 'Dossier Test' },
+    });
     fireEvent.change(screen.getByLabelText(/pièces attendues/i), { target: { value: '6' } });
     fireEvent.change(screen.getByLabelText(/expire dans/i), { target: { value: '14' } });
     await user.click(screen.getByRole('button', { name: /^créer$/i }));
     expect(api.createRequest).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedDocs: 6, expiresInDays: 14 }),
+      expect.objectContaining({ title: 'Dossier Test', expectedDocs: 6, expiresInDays: 14 }),
     );
+  });
+
+  it('PIN aléatoire proposé avec régénération, création bloquée si titre vide', async () => {
+    const api = await mockedApi();
+    api.listRequests.mockResolvedValue([]);
+    api.createRequest.mockClear();
+    const user = userEvent.setup();
+    renderDashboard();
+    const openers = screen.getAllByRole('button', { name: 'Créer une demande' });
+    await user.click(openers[0]);
+
+    const pinInput = screen.getByLabelText(/code pin/i) as HTMLInputElement;
+    expect(pinInput.value).toMatch(/^\d{4}$/);
+    await user.click(screen.getByRole('button', { name: /générer un autre pin/i }));
+    expect(pinInput.value).toMatch(/^\d{4}$/);
+
+    expect(screen.getByRole('button', { name: /^créer$/i })).toBeDisabled();
+    expect(api.createRequest).not.toHaveBeenCalled();
   });
 
   it('erreur de chargement affichée avec réessai', async () => {

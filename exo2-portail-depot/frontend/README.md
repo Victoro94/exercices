@@ -9,6 +9,6 @@ Upload : presign -> PUT MinIO direct avec progression XHR -> complete. États vi
 ```bash
 npm install
 npm run dev   # proxy /api -> :3000
-npm test      # Vitest + Testing Library : 33 tests (composants, pages, api client)
+npm test      # Vitest + Testing Library : 34 tests (composants, pages, api client)
 npm run build # dist/ servi par nginx
 ```

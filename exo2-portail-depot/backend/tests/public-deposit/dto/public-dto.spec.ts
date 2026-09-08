@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { UnlockDto } from './unlock.dto';
-import { PresignDto } from './presign.dto';
+import { UnlockDto } from '../../../src/public-deposit/dto/unlock.dto';
+import { PresignDto } from '../../../src/public-deposit/dto/presign.dto';
 
 describe('DTO dépôt public', () => {
   it('unlock : PIN 4 chiffres uniquement', async () => {

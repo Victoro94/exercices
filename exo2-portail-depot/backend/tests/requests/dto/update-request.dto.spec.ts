@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { UpdateRequestDto } from './update-request.dto';
+import { UpdateRequestDto } from '../../../src/requests/dto/update-request.dto';
 
 async function errorsOf(dto: object) {
   return validate(plainToInstance(UpdateRequestDto, dto));

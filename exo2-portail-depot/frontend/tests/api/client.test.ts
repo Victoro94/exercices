@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from './client';
+import { api } from '../../src/api/client';
 
 function jsonResponse(body: unknown, init: { status: number; ok: boolean }) {
   return { ...init, json: async () => body } as Response;

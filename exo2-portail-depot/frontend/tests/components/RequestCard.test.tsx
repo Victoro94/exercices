@@ -1,11 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { RequestCard } from './RequestCard';
-import type { DepositRequest } from '../api/client';
+import { RequestCard } from '../../src/components/RequestCard';
+import type { DepositRequest } from '../../src/api/client';
 
-vi.mock('../api/client', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../api/client')>();
+vi.mock('../../src/api/client', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/api/client')>();
   return {
     ...mod,
     api: { getRequestFiles: vi.fn(), downloadRequestFile: vi.fn() },
@@ -56,7 +56,7 @@ describe('RequestCard', () => {
   });
 
   it('avocat : Voir les pièces liste puis Télécharger ouvre l’URL', async () => {
-    const { api } = await import('../api/client');
+    const { api } = await import('../../src/api/client');
     vi.mocked(api.getRequestFiles).mockResolvedValue([
       { id: 'd1', filename: 'a.pdf', mime: 'application/pdf', size: 10, createdAt: new Date().toISOString() },
     ]);

@@ -25,6 +25,12 @@ export class MetricsService {
     registers: [this.registry],
   });
 
+  readonly unlockOk = new Counter({
+    name: 'public_unlock_ok_total',
+    help: 'Successful public PIN unlocks (anonymous clients)',
+    registers: [this.registry],
+  });
+
   readonly pinLockout = new Counter({
     name: 'pin_lockout_total',
     help: 'PIN lockouts triggered',
@@ -56,6 +62,9 @@ export class MetricsService {
   }
   incPinFail() {
     this.pinFail.inc();
+  }
+  incUnlockOk() {
+    this.unlockOk.inc();
   }
   incPinLockout() {
     this.pinLockout.inc();

@@ -2,10 +2,31 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
+import type { RequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { computeStatus } from './logic/deposit-status';
 import { MetricsService } from '../metrics/metrics.service';
 import { StorageService } from '../storage/storage.service';
+import type { CreateRequestDto } from './dto/create-request.dto';
+import type { UpdateRequestDto } from './dto/update-request.dto';
+
+// Ligne ladre : ce que l'API expose d'une demande (jamais pinHash, jamais s3Key).
+export interface DepositRequestView {
+  id: string;
+  title: string;
+  token: string;
+  expectedDocs: number;
+  readyCount: number;
+  status: RequestStatus;
+  expiresAt: Date;
+  createdAt: Date;
+  publicUrlPath: string;
+}
+
+type RequestRow = Pick<
+  DepositRequestView,
+  'id' | 'title' | 'token' | 'expectedDocs' | 'status' | 'expiresAt' | 'createdAt'
+>;
 
 @Injectable()
 export class RequestsService {
@@ -19,7 +40,7 @@ export class RequestsService {
     return randomBytes(5).toString('hex');
   }
 
-  async create(userId: string, dto: { title: string; pin: string; expectedDocs?: number; expiresInDays?: number }) {
+  async create(userId: string, dto: CreateRequestDto): Promise<DepositRequestView> {
     const expectedDocs = dto.expectedDocs ?? 4;
     const expiresInDays = dto.expiresInDays ?? 7;
     const token = this.newToken();
@@ -51,7 +72,7 @@ export class RequestsService {
       },
     });
     const now = new Date();
-    const out: unknown[] = [];
+    const out: DepositRequestView[] = [];
     for (const r of rows) {
       const status = computeStatus(r.expiresAt, r._count.documents, r.expectedDocs, now);
       if (status !== r.status) {
@@ -86,11 +107,7 @@ export class RequestsService {
     };
   }
 
-  async update(
-    userId: string,
-    id: string,
-    dto: { title?: string; expectedDocs?: number; expiresAt?: string },
-  ) {
+  async update(userId: string, id: string, dto: UpdateRequestDto): Promise<DepositRequestView> {
     const existing = await this.prisma.depositRequest.findFirst({
       where: { id, userId },
       include: { _count: { select: { documents: { where: { status: 'READY' } } } } },
@@ -102,9 +119,9 @@ export class RequestsService {
     if (dto.expiresAt !== undefined) data.expiresAt = new Date(dto.expiresAt);
     const updated = await this.prisma.depositRequest.update({ where: { id }, data });
     const status = computeStatus(
-      (updated.expiresAt ?? existing.expiresAt) as Date,
+      updated.expiresAt ?? existing.expiresAt,
       existing._count.documents,
-      ((updated.expectedDocs ?? existing.expectedDocs) as number),
+      updated.expectedDocs ?? existing.expectedDocs,
     );
     if (status !== existing.status) {
       await this.prisma.depositRequest.update({ where: { id }, data: { status } });
@@ -158,18 +175,17 @@ export class RequestsService {
     }
   }
 
-  private toPublic(r: Record<string, unknown>, readyCount: number, status?: string) {
-    const s = (status ?? (r['status'] as string)) as string;
+  private toPublic(r: RequestRow, readyCount: number, status?: RequestStatus): DepositRequestView {
     return {
-      id: r['id'],
-      title: r['title'],
-      token: r['token'],
-      expectedDocs: r['expectedDocs'],
+      id: r.id,
+      title: r.title,
+      token: r.token,
+      expectedDocs: r.expectedDocs,
       readyCount,
-      status: s,
-      expiresAt: r['expiresAt'],
-      createdAt: r['createdAt'],
-      publicUrlPath: `/d/${r['token']}`,
+      status: status ?? r.status,
+      expiresAt: r.expiresAt,
+      createdAt: r.createdAt,
+      publicUrlPath: `/d/${r.token}`,
     };
   }
 }

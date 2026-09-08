@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { EmptyState } from './EmptyState';
+import { EmptyState } from '../../src/components/EmptyState';
 
 describe('EmptyState', () => {
   it('explique l’écran vide et propose de créer', () => {

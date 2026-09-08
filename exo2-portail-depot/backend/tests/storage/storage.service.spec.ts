@@ -1,4 +1,4 @@
-import { StorageService } from './storage.service';
+import { StorageService } from '../../src/storage/storage.service';
 
 function configStub(values: Record<string, string>) {
   return { get: (k: string) => values[k] } as never;

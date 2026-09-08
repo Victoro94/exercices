@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PublicDepositService } from './public-deposit.service';
+import { PublicDepositService } from '../../src/public-deposit/public-deposit.service';
 
 function reqFixture(over: Record<string, unknown> = {}) {
   return {
@@ -53,6 +53,7 @@ describe('PublicDepositService', () => {
     };
     metrics = {
       incPinFail: jest.fn(),
+      incUnlockOk: jest.fn(),
       incPinLockout: jest.fn(),
       incUploadFail: jest.fn(),
       requestsByStatus: { set: jest.fn() },
@@ -65,6 +66,7 @@ describe('PublicDepositService', () => {
     const r = await svc.unlock('tok123', '4816', '1.2.3.4');
     expect(r.session).toBe('public-session');
     expect(r.title).toBe('Dossier Martin');
+    expect(metrics.incUnlockOk).toHaveBeenCalledTimes(1);
     expect(prisma.depositRequest.update).toHaveBeenCalledWith({
       where: { id: 'r1' },
       data: { failedAttempts: 0, lockedUntil: null },

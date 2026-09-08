@@ -2,75 +2,135 @@
   "title": "Portail de dépôt",
   "uid": "portail-depot",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "tags": ["portail-depot"],
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
     {
       "id": 1,
       "type": "stat",
-      "title": "Backend UP",
+      "title": "État du backend",
+      "description": "Le backend répond-il au scrape Prometheus ? Vert = en ligne, rouge = down (alerte BackendDown).",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "up{job=\"backend\"}", "refId": "A" }]
+      "targets": [{ "expr": "up{job=\"backend\"}", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Hors ligne", "color": "red" },
+                "1": { "text": "En ligne", "color": "green" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 1, "color": "green" }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
       "id": 2,
       "type": "stat",
-      "title": "Demandes créées (total)",
+      "title": "Demandes créées",
+      "description": "Nombre total de demandes de dépôt créées par les avocats depuis le démarrage.",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "deposit_requests_created_total", "refId": "A" }]
+      "targets": [{ "expr": "deposit_requests_created_total", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] }
     },
     {
       "id": 3,
       "type": "stat",
-      "title": "Échecs PIN (5min)",
+      "title": "Codes PIN faux",
+      "description": "Nombre de PIN incorrects saisis ces 5 dernières minutes. Un pic = client qui tourne en rond ou tentative de force brute (alerte PinBruteForce au-delà de 10).",
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "increase(pin_unlock_fail_total[5m])", "refId": "A" }]
+      "targets": [{ "expr": "increase(pin_unlock_fail_total[5m])", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 5, "color": "orange" },
+              { "value": 10, "color": "red" }
+            ]
+          }
+        },
+        "overrides": []
+      }
     },
     {
       "id": 4,
       "type": "stat",
-      "title": "Lockouts PIN (total)",
+      "title": "Liens verrouillés",
+      "description": "Nombre de fois qu'un lien a été bloqué 15 minutes après 5 PIN faux.",
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "pin_lockout_total", "refId": "A" }]
+      "targets": [{ "expr": "pin_lockout_total", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] }
     },
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Requêtes/s par route",
+      "title": "Trafic de l'API",
+      "description": "Requêtes par seconde et par usage, hors sondes techniques, plus les connexions clients anonymes (déverrouillages PIN réussis).",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "sum by (route) (rate(http_requests_total[5m]))", "refId": "A" }]
+      "targets": [
+        {
+          "expr": "label_replace(label_replace(label_replace(sum by (route) (rate(http_requests_total{route!~\"/api/health|/api/metrics\"}[5m])), \"route\", \"Connexion avocat\", \"route\", \"/api/auth/login\"), \"route\", \"Demandes avocat\", \"route\", \"/api/requests\"), \"route\", \"Dépôt client\", \"route\", \"/api/public/.+\")",
+          "refId": "A",
+          "legendFormat": "__auto"
+        },
+        {
+          "expr": "sum(rate(public_unlock_ok_total[5m]))",
+          "refId": "B",
+          "legendFormat": "Connexions clients"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
     },
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Échecs d'upload par motif",
+      "title": "Dépôts en échec",
+      "description": "Uploads refusés ces 10 dernières minutes, par cause : mauvais type de fichier (mime), trop gros (size), objet introuvable (missing-object). Un pic = MinIO, CORS ou fichiers hors gabarit.",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "sum by (reason) (increase(upload_fail_total[10m]))", "refId": "A" }]
+      "targets": [{ "expr": "sum by (reason) (increase(upload_fail_total[10m]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] }
     },
     {
       "id": 7,
       "type": "timeseries",
-      "title": "Latence HTTP p95 (s)",
+      "title": "Lenteur de l'API",
+      "description": "Temps de réponse en dessous duquel passent 95 % des requêtes. Si la courbe monte, le backend rame (base, MinIO, charge).",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
-          "refId": "A"
+          "refId": "A",
+          "legendFormat": "95% des requêtes"
         }
-      ]
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
     },
     {
       "id": 8,
       "type": "alertlist",
-      "title": "Alertes (Alertmanager)",
+      "title": "Alertes en cours",
+      "description": "Alertes déclenchées par Prometheus (BackendDown, PinBruteForce, UploadFailuresHigh, HttpErrorsHigh).",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "datasource": { "type": "alertmanager", "uid": "alertmanager" },
       "options": { "showOptions": "all", "maxItems": 20, "sortOrder": 1 }

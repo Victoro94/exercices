@@ -38,6 +38,20 @@ export class PublicDepositService {
     return r;
   }
 
+  // Recompte les READY et persiste le statut. Point unique de vérité,
+  // appelé après chaque mutation (complete, removeFile).
+  private async refreshStatus(requestId: string) {
+    const r = await this.prisma.depositRequest.findUnique({ where: { id: requestId } });
+    if (!r) throw new NotFoundException('Demande inconnue');
+    const count = await this.prisma.document.count({
+      where: { requestId, status: 'READY' },
+    });
+    const status = computeStatus(r.expiresAt, count, r.expectedDocs);
+    await this.prisma.depositRequest.update({ where: { id: requestId }, data: { status } });
+    this.metrics.requestsByStatus.set({ status }, 1);
+    return { readyCount: count, expectedDocs: r.expectedDocs, status };
+  }
+
   async getMeta(token: string) {
     const r = await this.findByToken(token);
     const status = computeStatus(r.expiresAt, r._count.documents, r.expectedDocs);
@@ -90,6 +104,7 @@ export class PublicDepositService {
     await this.prisma.auditLog.create({
       data: { requestId: r.id, ipHash: hashIp(ip), action: 'UNLOCK_OK' },
     });
+    this.metrics.incUnlockOk();
 
     const session = await this.jwt.signAsync(
       { scope: 'public-deposit', token },
@@ -146,12 +161,7 @@ export class PublicDepositService {
     await this.prisma.auditLog.create({
       data: { requestId: r.id, ipHash: hashIp(ip), action: 'UPLOAD_OK' },
     });
-
-    const count = await this.prisma.document.count({ where: { requestId: r.id, status: 'READY' } });
-    const status = computeStatus(r.expiresAt, count, r.expectedDocs);
-    await this.prisma.depositRequest.update({ where: { id: r.id }, data: { status } });
-    this.metrics.requestsByStatus.set({ status }, 1);
-    return { readyCount: count, expectedDocs: r.expectedDocs, status };
+    return this.refreshStatus(r.id);
   }
 
   async listFiles(token: string) {
@@ -180,12 +190,7 @@ export class PublicDepositService {
     await this.prisma.auditLog.create({
       data: { requestId: r.id, ipHash: hashIp(ip), action: 'DELETE_OK' },
     });
-
-    const count = await this.prisma.document.count({ where: { requestId: r.id, status: 'READY' } });
-    const status = computeStatus(r.expiresAt, count, r.expectedDocs);
-    await this.prisma.depositRequest.update({ where: { id: r.id }, data: { status } });
-    this.metrics.requestsByStatus.set({ status }, 1);
-    return { readyCount: count, expectedDocs: r.expectedDocs, status };
+    return this.refreshStatus(r.id);
   }
 
   async downloadFile(token: string, documentId: string) {

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { FileRow } from './FileRow';
+import { FileRow } from '../../src/components/FileRow';
 
 describe('FileRow', () => {
   it('affiche la progression en cours', () => {

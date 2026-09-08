@@ -4,7 +4,7 @@ import {
   isLocked,
   nextLockoutDate,
   shouldLockout,
-} from './deposit-status';
+} from '../../../src/requests/logic/deposit-status';
 
 describe('deposit-status (logique métier)', () => {
   const now = new Date('2026-03-12T10:00:00Z');

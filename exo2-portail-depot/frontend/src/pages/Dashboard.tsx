@@ -6,14 +6,18 @@ import { EmptyState } from '../components/EmptyState';
 import { Reveal } from '../components/Reveal';
 import { DIV } from '../theme';
 
+function randomPin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
 export function Dashboard() {
   const nav = useNavigate();
   const [items, setItems] = useState<DepositRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [title, setTitle] = useState('Dossier Martin, pièces 2026');
-  const [pin, setPin] = useState('4816');
+  const [title, setTitle] = useState('');
+  const [pin, setPin] = useState(() => randomPin());
   const [expectedDocs, setExpectedDocs] = useState('4');
   const [expiresInDays, setExpiresInDays] = useState('7');
   const [showForm, setShowForm] = useState(false);
@@ -47,13 +51,16 @@ export function Dashboard() {
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    if (title.trim().length < 3 || !/^\d{4}$/.test(pin)) return;
     setCreating(true);
     try {
       const n = Math.min(50, Math.max(1, parseInt(expectedDocs, 10) || 4));
       const days = Math.min(30, Math.max(1, parseInt(expiresInDays, 10) || 7));
-      const r = await api.createRequest({ title, pin, expectedDocs: n, expiresInDays: days });
+      const r = await api.createRequest({ title: title.trim(), pin, expectedDocs: n, expiresInDays: days });
       setItems((p) => [r, ...p]);
       setShowForm(false);
+      setTitle('');
+      setPin(randomPin());
       setNotice(`Lien généré : ${window.location.origin}/d/${r.token} — PIN ${pin}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Création impossible');
@@ -99,12 +106,36 @@ export function Dashboard() {
         <form onSubmit={create} className="div-card" style={{ padding: 20, display: 'grid', gap: 12, marginBottom: 16 }}>
           <label style={{ fontSize: 13, fontWeight: 600 }}>
             Intitulé du dossier
-            <input className="div-input" style={{ marginTop: 6 }} value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              className="div-input"
+              style={{ marginTop: 6 }}
+              placeholder="Dossier Martin, pièces 2026"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </label>
-          <label style={{ fontSize: 13, fontWeight: 600 }}>
-            Code PIN (4 chiffres)
-            <input className="div-input mono" style={{ marginTop: 6 }} value={pin} onChange={(e) => setPin(e.target.value)} maxLength={4} />
-          </label>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Code PIN proposé (4 chiffres)</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <input
+                aria-label="Code PIN"
+                className="div-input mono"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                maxLength={4}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={() => setPin(randomPin())}
+                title="Générer un autre PIN"
+                aria-label="Générer un autre PIN"
+                style={{ border: `1px solid ${DIV.border}`, background: '#fff', borderRadius: 8, padding: '10px 14px', fontSize: 16, cursor: 'pointer' }}
+              >
+                ⟳
+              </button>
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <label style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
               Pièces attendues (1-50)
@@ -132,7 +163,11 @@ export function Dashboard() {
             </label>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="div-btn-primary" disabled={creating} type="submit">
+            <button
+              className="div-btn-primary"
+              disabled={creating || title.trim().length < 3 || !/^\d{4}$/.test(pin)}
+              type="submit"
+            >
               {creating ? 'Création…' : 'Créer'}
             </button>
             <button type="button" onClick={() => setShowForm(false)} style={{ border: `1px solid ${DIV.border}`, background: '#fff', borderRadius: 999, padding: '14px 20px', cursor: 'pointer' }}>
