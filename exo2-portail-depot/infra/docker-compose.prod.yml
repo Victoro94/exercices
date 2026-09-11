@@ -25,6 +25,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD manquant (voir .env)}
+      MINIO_SERVER_URL: https://${SUBDOMAIN:?SUBDOMAIN manquant}
+      MINIO_BROWSER_REDIRECT_URL: https://${SUBDOMAIN:?SUBDOMAIN manquant}/minio-console/
     volumes:
       - miniodata:/data
     healthcheck:
@@ -60,6 +62,7 @@ services:
     image: ghcr.io/victoro94/portail-depot-frontend:${IMAGE_TAG:-latest}
     volumes:
       - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./monitoring.htpasswd:/etc/nginx/monitoring.htpasswd:ro
       - certs:/etc/letsencrypt:ro
       - web:/var/www/certbot:ro
     ports:
@@ -72,12 +75,22 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.52.0
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.external-url=https://${SUBDOMAIN:?SUBDOMAIN manquant}/prometheus/'
+      - '--web.route-prefix=/'
     volumes:
       - ./prometheus:/etc/prometheus:ro
       - promdata:/prometheus
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=https://${SUBDOMAIN:?SUBDOMAIN manquant}/alertmanager/'
+      - '--web.route-prefix=/'
     volumes:
       - ./alertmanager:/etc/alertmanager:ro
     depends_on:
@@ -93,6 +106,8 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?manquant}
+      GF_SERVER_ROOT_URL: https://${SUBDOMAIN:?SUBDOMAIN manquant}/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: 'true'
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro

@@ -48,4 +48,9 @@ Détails : `nginx.prod.conf` termine TLS (cert `--cert-name portail`, HSTS,
 expose le bucket MinIO en path-style sous le même domaine (les URLs presignées
 restent valides : host = domaine, chemin préservé). Les ports publiés sont
 bindés `127.0.0.1` dans ta plage : seul le proxy frontal voit ton nginx.
-Monitoring (Prometheus/Grafana) interne uniquement, via tunnel SSH si besoin.
+Monitoring exposé sous le même domaine (sans tunnel) : `/grafana/`,
+`/prometheus/`, `/alertmanager/`, `/minio-console/`, protégés par basic-auth
+commune (`monitoring.htpasswd`, user `admin`) + logins natifs Grafana
+(`admin`/`GF_SECURITY_ADMIN_PASSWORD`) et MinIO console. Redéploiement :
+`docker compose -f infra/docker-compose.prod.yml up -d --pull always` puis
+`exec frontend nginx -s reload`.
