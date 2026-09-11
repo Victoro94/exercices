@@ -9,6 +9,17 @@ set -euo pipefail
 INFRA="$(cd "$(dirname "$0")" && pwd)"
 cd "$INFRA"
 
+# Charger le .env racine AVANT tout appel compose (comme certbot-init.sh) :
+# compose cherche sinon un .env dans infra/ et les ${VAR:?...} échouent.
+if [ ! -f ../.env ]; then
+  echo "ERREUR: ../.env introuvable (lancer depuis la racine du repo)."
+  exit 1
+fi
+set -a
+# shellcheck disable=SC1091
+source ../.env
+set +a
+
 COMPOSE=(docker compose -f docker-compose.prod.yml)
 
 echo "==> 1/5 validation compose (interpolations SUBDOMAIN/ports/secrets)"
@@ -26,10 +37,6 @@ echo "==> 4/5 reload nginx (sans coupure)"
 "${COMPOSE[@]}" exec -T frontend nginx -s reload
 
 echo "==> 5/5 sante"
-set -a
-# shellcheck disable=SC1091
-source ../.env
-set +a
 : "${SUBDOMAIN:?SUBDOMAIN manquant dans .env}"
 : "${HTTP_PORT:?HTTP_PORT manquant dans .env}"
 
