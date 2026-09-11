@@ -26,17 +26,43 @@ echo "==> 1/5 validation compose (interpolations SUBDOMAIN/ports/secrets)"
 "${COMPOSE[@]}" config -q
 echo "    compose OK."
 
-echo "==> 2/5 demarrage stack (sans certonly)"
+echo "==> 2/6 demarrage dependances (sans certonly)"
 # shellcheck disable=SC2068
-"${COMPOSE[@]}" up -d $@
+"${COMPOSE[@]}" up -d $@ postgres minio backend prometheus alertmanager alert-sink grafana
 
-echo "==> 3/5 test nginx"
-"${COMPOSE[@]}" exec -T frontend nginx -t
+echo "==> 3/6 demarrage frontend (upstreams DNS prets)"
+"${COMPOSE[@]}" up -d frontend
 
-echo "==> 4/5 reload nginx (sans coupure)"
-"${COMPOSE[@]}" exec -T frontend nginx -s reload
+echo "attente frontend running (30s max)"
+for i in $(seq 1 30); do
+  CID=$("${COMPOSE[@]}" ps -q frontend 2>/dev/null || true)
+  if [ -n "$CID" ] && [ "$(docker inspect -f '{{.State.Running}}' "$CID" 2>/dev/null || echo false)" = "true" ]; then
+    echo "    frontend running."
+    break
+  fi
+  sleep 2
+  if [ "$i" = 30 ]; then
+    echo "ERREUR: frontend non demarre. Logs :"
+    "${COMPOSE[@]}" logs frontend --tail=60 || true
+    exit 1
+  fi
+done
 
-echo "==> 5/5 sante"
+echo "==> 4/6 test nginx"
+if ! "${COMPOSE[@]}" exec -T frontend nginx -t; then
+  echo "ERREUR nginx -t. Logs :"
+  "${COMPOSE[@]}" logs frontend --tail=60 || true
+  exit 1
+fi
+
+echo "==> 5/6 reload nginx (sans coupure)"
+if ! "${COMPOSE[@]}" exec -T frontend nginx -s reload; then
+  echo "ERREUR nginx reload. Logs :"
+  "${COMPOSE[@]}" logs frontend --tail=60 || true
+  exit 1
+fi
+
+echo "==> 6/6 sante"
 : "${SUBDOMAIN:?SUBDOMAIN manquant dans .env}"
 : "${HTTP_PORT:?HTTP_PORT manquant dans .env}"
 

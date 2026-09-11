@@ -71,7 +71,18 @@ services:
       - '127.0.0.1:${HTTP_PORT:?HTTP_PORT manquant}:80'
       - '127.0.0.1:${HTTPS_PORT:?HTTPS_PORT manquant}:443'
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      minio:
+        condition: service_started
+      grafana:
+        condition: service_started
+      prometheus:
+        condition: service_started
+      alertmanager:
+        condition: service_started
+    # Relance spontanée si nginx quitte (course DNS au boot, cert reload, etc.)
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:v2.52.0
