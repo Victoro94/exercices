@@ -22,7 +22,7 @@ set +a
 
 COMPOSE=(docker compose -f docker-compose.prod.yml)
 
-echo "==> 1/5 validation compose (interpolations SUBDOMAIN/ports/secrets)"
+echo "==> 1/6 validation compose (interpolations SUBDOMAIN/ports/secrets)"
 "${COMPOSE[@]}" config -q
 echo "    compose OK."
 
